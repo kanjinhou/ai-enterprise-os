@@ -1,0 +1,434 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - AI Enterprise OS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Safety Overview</h2>
+            <p class="text-muted mb-0">Real-time PPE compliance monitoring</p>
+        </div>
+        <div>
+            <button class="btn btn-primary">
+                <i class="bi bi-download me-2"></i>Export Report
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6 col-lg-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="value" id="totalEvents">--</div>
+                        <div class="label">Total Violations</div>
+                    </div>
+                    <div class="icon bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-exclamation-circle"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="value" id="unresolvedCount">--</div>
+                        <div class="label">Unresolved</div>
+                    </div>
+                    <div class="icon bg-danger bg-opacity-10 text-danger">
+                        <i class="bi bi-clock-history"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="value" id="cameraCount">--</div>
+                        <div class="label">Active Cameras</div>
+                    </div>
+                    <div class="icon bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-camera-video"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="value" id="resolveRate">--%</div>
+                        <div class="label">Resolve Rate</div>
+                    </div>
+                    <div class="icon bg-info bg-opacity-10 text-info">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+            <div class="chart-container">
+                <h5><i class="bi bi-graph-up me-2"></i>Violation Trend (Last 7 Days)</h5>
+                <div style="position: relative; height: 300px; width: 100%;">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="chart-container">
+                <h5><i class="bi bi-pie-chart me-2"></i>Violations by Camera</h5>
+                <div style="position: relative; height: 300px; width: 100%;">
+                    <canvas id="cameraChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enterprise Modules Section -->
+    <div class="row g-4">
+        <div class="col-12">
+            <h5 class="fw-bold mb-3"><i class="bi bi-stars me-2"></i>Enterprise Modules</h5>
+        </div>
+        
+        <!-- AI Smart Report (LLM) Card -->
+        <div class="col-md-6">
+            <div class="stat-card h-100">
+                <div class="d-flex align-items-start">
+                    <div class="icon bg-primary bg-opacity-10 text-primary me-3" style="width: 56px; height: 56px; font-size: 1.5rem;">
+                        <i class="bi bi-file-earmark-text"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="fw-bold mb-1">AI Smart Report</h6>
+                        <p class="text-muted small mb-3">Generate intelligent safety reports using AI analysis</p>
+                        {% if has_llm_permission %}
+                        <button class="btn btn-primary" onclick="generateReport()">
+                            <i class="bi bi-magic me-2"></i>Generate Report
+                        </button>
+                        {% else %}
+                        <button class="btn btn-secondary disabled" onclick="showUpgradeModal('AI Reporting')">
+                            <i class="bi bi-lock me-2"></i>Upgrade to Unlock
+                        </button>
+                        <span class="badge bg-warning text-dark ms-2">Premium</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Drone Surveillance Card -->
+        <div class="col-md-6">
+            <div class="stat-card h-100">
+                <div class="d-flex align-items-start">
+                    <div class="icon bg-success bg-opacity-10 text-success me-3" style="width: 56px; height: 56px; font-size: 1.5rem;">
+                        <i class="bi bi-airplane"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="fw-bold mb-1">Drone Surveillance</h6>
+                        <p class="text-muted small mb-3">Connect and control aerial monitoring drones</p>
+                        <button id="btn-dispatch-drone" class="btn btn-success">
+                            🚀 Dispatch Drone
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upgrade Modal -->
+<div class="modal fade" id="upgradeModal" tabindex="-1" aria-labelledby="upgradeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title" id="upgradeModalLabel">
+                    <i class="bi bi-lock-fill text-warning me-2"></i>Feature Locked
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="mb-3">
+                    <i class="bi bi-shield-lock display-1 text-muted"></i>
+                </div>
+                <p class="mb-0" id="upgradeModalMessage">This feature requires a premium subscription.</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary">
+                    <i class="bi bi-envelope me-2"></i>Contact Sales
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Feature Modal (for active features) -->
+<div class="modal fade" id="featureModal" tabindex="-1" aria-labelledby="featureModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title" id="featureModalLabel">Processing</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4">
+                <div id="featureModalLoading" class="text-center">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mb-0" id="featureModalMessage">Please wait...</p>
+                </div>
+                <div id="featureReportContent" class="d-none" style="max-height: 60vh; overflow-y: auto;">
+                    <pre id="featureReportText" class="mb-0 p-3 bg-light rounded small" style="white-space: pre-wrap; font-family: inherit;"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 存储图表实例，用于销毁重绘
+let trendChartInstance = null;
+let cameraChartInstance = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Fetch dashboard data from API
+    fetch('/api/v1/ppe/dashboard/')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Dashboard API Response:', data);
+            
+            // Update stat cards
+            document.getElementById('totalEvents').textContent = data.total_events;
+            document.getElementById('unresolvedCount').textContent = data.unresolved_count;
+            document.getElementById('cameraCount').textContent = data.camera_stats.length;
+            
+            // Calculate resolve rate
+            if (data.total_events > 0) {
+                const resolveRate = Math.round(((data.total_events - data.unresolved_count) / data.total_events) * 100);
+                document.getElementById('resolveRate').textContent = resolveRate + '%';
+            } else {
+                document.getElementById('resolveRate').textContent = '100%';
+            }
+
+            // ========== 绘制折线图 (Trend Chart) ==========
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+            
+            // 如果图表实例已存在，先销毁
+            if (trendChartInstance) {
+                trendChartInstance.destroy();
+            }
+            
+            // 准备数据
+            const trendLabels = data.recent_trend.map(d => d.date);
+            const trendData = data.recent_trend.map(d => d.count);
+            
+            trendChartInstance = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: trendLabels,
+                    datasets: [{
+                        label: 'Violations',
+                        data: trendData,
+                        borderColor: '#4e73df',
+                        backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true,
+                        pointBackgroundColor: '#4e73df',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+
+            // ========== 绘制甜甜圈图 (Camera Chart) ==========
+            const cameraCtx = document.getElementById('cameraChart').getContext('2d');
+            
+            // 如果图表实例已存在，先销毁
+            if (cameraChartInstance) {
+                cameraChartInstance.destroy();
+            }
+            
+            // 准备数据
+            const cameraLabels = data.camera_stats.map(d => d.camera_id);
+            const cameraData = data.camera_stats.map(d => d.count);
+            
+            // 颜色数组
+            const chartColors = [
+                '#4e73df',  // 蓝色
+                '#1cc88a',  // 绿色
+                '#36b9cc',  // 青色
+                '#f6c23e',  // 黄色
+                '#e74a3b',  // 红色
+                '#858796',  // 灰色
+                '#5a5c69',  // 深灰
+                '#6f42c1'   // 紫色
+            ];
+            
+            cameraChartInstance = new Chart(cameraCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: cameraLabels,
+                    datasets: [{
+                        data: cameraData,
+                        backgroundColor: chartColors.slice(0, cameraLabels.length),
+                        borderColor: '#fff',
+                        borderWidth: 2,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        }
+                    },
+                    cutout: '60%'
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching dashboard data:', error);
+        });
+
+    // ========== Drone Dispatch Button Event Listener ==========
+    const dispatchBtn = document.getElementById('btn-dispatch-drone');
+    if (dispatchBtn) {
+        dispatchBtn.addEventListener('click', function() {
+            const originalText = this.innerHTML;
+            this.disabled = true;
+            this.innerHTML = 'Sending...';
+            
+            alert('Contacting DJI Flight Hub...');
+            
+            // 获取 CSRF token
+            const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                              document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+            
+            fetch('/api/v1/drone/dispatch/', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                credentials: 'same-origin'
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => Promise.reject(data));
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert(data.msg || 'Drone Dispatched! 🚁');
+                    } else {
+                        alert('Error: ' + (data.msg || data.error || 'Failed to dispatch drone.'));
+                    }
+                })
+                .catch(err => {
+                    alert('Error: ' + (err.error || err.msg || 'Failed to dispatch drone.'));
+                })
+                .finally(() => {
+                    dispatchBtn.disabled = false;
+                    dispatchBtn.innerHTML = originalText;
+                });
+        });
+    }
+});
+
+// ========== Enterprise Modules Functions ==========
+
+function showUpgradeModal(moduleName) {
+    const modal = new bootstrap.Modal(document.getElementById('upgradeModal'));
+    document.getElementById('upgradeModalMessage').innerHTML = 
+        `This feature requires the <strong>[${moduleName}]</strong> module subscription.<br><br>Please contact our sales team to upgrade your plan.`;
+    modal.show();
+}
+
+function generateReport() {
+    const modalEl = document.getElementById('featureModal');
+    const modal = new bootstrap.Modal(modalEl);
+    const loadingEl = document.getElementById('featureModalLoading');
+    const reportEl = document.getElementById('featureReportContent');
+    const reportTextEl = document.getElementById('featureReportText');
+    const msgEl = document.getElementById('featureModalMessage');
+
+    document.getElementById('featureModalLabel').innerHTML = '<i class="bi bi-file-earmark-text text-primary me-2"></i>AI Smart Report';
+    loadingEl.classList.remove('d-none');
+    reportEl.classList.add('d-none');
+    msgEl.innerHTML = 'Connecting to AI analysis engine...';
+    modal.show();
+
+    fetch('/api/v1/report/generate/', {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin'
+    })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => Promise.reject(data));
+            }
+            return response.json();
+        })
+        .then(data => {
+            loadingEl.classList.add('d-none');
+            reportEl.classList.remove('d-none');
+            reportTextEl.textContent = data.report || 'No report content.';
+        })
+        .catch(err => {
+            loadingEl.classList.remove('d-none');
+            reportEl.classList.add('d-none');
+            msgEl.innerHTML = '<span class="text-danger">' + (err.error || 'Failed to generate report.') + '</span>';
+        });
+}
+
+// connectDrone() 函数已移除，改用事件监听器
+</script>
+{% endblock %}

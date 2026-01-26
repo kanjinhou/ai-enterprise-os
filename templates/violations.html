@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+
+{% block title %}Violation Log - AI Enterprise OS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .violation-card {
+        background: #fff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .violation-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    }
+
+    .violation-card .card-img-top {
+        height: 200px;
+        object-fit: cover;
+        background-color: #e9ecef;
+    }
+
+    .violation-card .card-body {
+        padding: 16px;
+    }
+
+    .violation-card .camera-id {
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: #1a1d21;
+        margin-bottom: 8px;
+    }
+
+    .violation-card .timestamp {
+        color: #6c757d;
+        font-size: 0.85rem;
+        margin-bottom: 8px;
+    }
+
+    .violation-card .detection-info {
+        font-size: 0.85rem;
+        color: #495057;
+        background-color: #f8f9fa;
+        padding: 8px 12px;
+        border-radius: 6px;
+        margin-bottom: 12px;
+    }
+
+    .badge-resolved {
+        background-color: #1cc88a;
+    }
+
+    .badge-unresolved {
+        background-color: #e74a3b;
+    }
+
+    .loading-spinner {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 300px;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Violation Log</h2>
+            <p class="text-muted mb-0">All detected PPE violations</p>
+        </div>
+        <div>
+            <button class="btn btn-outline-secondary me-2">
+                <i class="bi bi-funnel me-2"></i>Filter
+            </button>
+            <button class="btn btn-primary">
+                <i class="bi bi-download me-2"></i>Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Violations Grid -->
+    <div id="violationsContainer">
+        <!-- Loading State -->
+        <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('violationsContainer');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+
+    // Fetch violations data from API
+    fetch('/api/v1/ppe/events/')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Violations API Response:', data);
+            
+            // Hide loading spinner
+            loadingSpinner.style.display = 'none';
+
+            // Check if data is empty
+            if (!data || data.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="bi bi-inbox"></i>
+                        <h4>No Violations Found</h4>
+                        <p>There are no violation records yet.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Build grid HTML
+            let html = '<div class="row g-4">';
+            
+            data.forEach(item => {
+                // Format timestamp
+                const timestamp = new Date(item.timestamp);
+                const formattedTime = timestamp.toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                // Format detections
+                let detectionsText = 'No detection data';
+                if (item.detections && typeof item.detections === 'object') {
+                    if (item.detections.violation) {
+                        detectionsText = `Type: ${item.detections.violation}`;
+                        if (item.detections.confidence) {
+                            detectionsText += ` (${Math.round(item.detections.confidence * 100)}% confidence)`;
+                        }
+                    } else {
+                        detectionsText = JSON.stringify(item.detections).substring(0, 50);
+                    }
+                }
+
+                // Status badge
+                const statusBadge = item.is_resolved 
+                    ? '<span class="badge badge-resolved">Resolved</span>'
+                    : '<span class="badge badge-unresolved">Unresolved</span>';
+
+                html += `
+                    <div class="col-sm-6 col-lg-4 col-xl-3">
+                        <div class="violation-card">
+                            <img src="${item.image}" class="card-img-top" alt="Violation Image" 
+                                 onerror="this.src='https://via.placeholder.com/400x200?text=Image+Not+Found'">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="camera-id">
+                                        <i class="bi bi-camera-video me-1"></i>${item.camera_id}
+                                    </div>
+                                    ${statusBadge}
+                                </div>
+                                <div class="timestamp">
+                                    <i class="bi bi-clock me-1"></i>${formattedTime}
+                                </div>
+                                <div class="detection-info">
+                                    <i class="bi bi-cpu me-1"></i>${detectionsText}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error fetching violations:', error);
+            loadingSpinner.style.display = 'none';
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <h4>Error Loading Data</h4>
+                    <p>Failed to load violation records. Please try again later.</p>
+                </div>
+            `;
+        });
+});
+</script>
+{% endblock %}
