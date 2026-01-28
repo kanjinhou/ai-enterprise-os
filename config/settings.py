@@ -11,7 +11,8 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
-
+import os
+import dj_database_url
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -23,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-9%^*ep!_#*)r0^@k-5ek%5eo7t@bwz%#3=#l^8zmb+ee&zy&x$"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = 'RENDER' not in os.environ
 
 ALLOWED_HOSTS = ['*']
 
@@ -79,23 +80,19 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-#DATABASES = {
- #   'default': {
- #       'ENGINE': 'django.db.backends.mysql',  # 告诉 Django 用 MySQL
- #       'NAME': 'ai_platform_db',              # 刚才在 Workbench 建的库名
- #       'USER': 'root',                        # 用户名
- #       'PASSWORD': 'root',                 # ★★★ 这里一定要填你进 Workbench 输的那个密码！
- #       'HOST': '127.0.0.1',
- #       'PORT': '3308',                        # ★★★ 你的端口是 3308
- #   }
-#}
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+DATABASES={'default': {
+    'ENGINE': 'django.db.backends.mysql',
+    'NAME': 'ai_platform_db',  # 你之前的数据库名字
+    'USER': 'root',              # 你的 MySQL 用户名
+    'PASSWORD': 'root', # ⚠️⚠️⚠️ 记得改成你之前的 MySQL 密码！
+    'HOST': '127.0.0.1',
+    'PORT': '3308',
 }
+}
+
+db_from_env = dj_database_url.config(conn_max_age=600)
+DATABASES['default'].update(db_from_env)
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
