@@ -92,7 +92,7 @@ DATABASES={'default': {
 }
 
 # ✅ 修改后的代码（新的）
-db_from_env = dj_database_url.config(conn_max_age=0, ssl_require=True)
+db_from_env = dj_database_url.config(conn_max_age=0)
 DATABASES['default'].update(db_from_env)
 
 # Password validation
